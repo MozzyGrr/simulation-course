@@ -220,14 +220,13 @@ class FlightGUI:
 
         for row in self.results_table.get_children():
             self.results_table.delete(row)
-
-
 if __name__ == "__main__":
     root = tk.Tk()
     app = FlightGUI(root)
     root.mainloop()
----
 
+
+---
 Пример с траекториями
 <img width="1150" height="780" alt="image" src="https://github.com/user-attachments/assets/2e4344c1-fa56-4266-8cd9-1a9b29233b54" />
 
