@@ -11,14 +11,14 @@
 ---
 
 Код программы:
-import numpy as np
-import tkinter as tk
-from tkinter import ttk, messagebox
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 
-class ProjectileModel:
+    import numpy as np
+    import tkinter as tk
+    from tkinter import ttk, messagebox
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+    class ProjectileModel:
 
     def __init__(self, mass, area, drag_coeff=0.15, air_density=1.29, gravity=9.81):
         self.mass = mass
@@ -84,7 +84,7 @@ class ProjectileModel:
             "final_speed": final_speed
         }
 
-class FlightGUI:
+    class FlightGUI:
 
     def __init__(self, root_window):
         self.root = root_window
@@ -220,7 +220,7 @@ class FlightGUI:
 
         for row in self.results_table.get_children():
             self.results_table.delete(row)
-if __name__ == "__main__":
+    if __name__ == "__main__":
     root = tk.Tk()
     app = FlightGUI(root)
     root.mainloop()
