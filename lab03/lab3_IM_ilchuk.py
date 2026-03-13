@@ -126,53 +126,98 @@ def update_sim():
     for x in range(GRID_SIZE):
         for y in range(GRID_SIZE):
             state=grid[x,y]
+
             if state==fire:
                 new_burn[x,y]+=1
                 if new_burn[x,y]>=burn_duration:
                     new_grid[x,y]=ash
                     new_burn[x,y]=0
+
             elif state==ash:
                 if random.random()<ash_decay:
                     new_grid[x,y]=empty
+
             elif state==empty:
                 if random.random()<growth:
                     new_grid[x,y]=wood
+
             elif state==wood:
+
                 if random.random()<lightning:
                     new_grid[x,y]=fire
                     new_burn[x,y]=1
                     continue
 
                 catch=False
+
                 for dx in [-1,0,1]:
                     for dy in [-1,0,1]:
-                        if dx==0 and dy==0: continue
+
+                        if dx==0 and dy==0:
+                            continue
+
                         nx=x+dx
                         ny=y+dy
+
                         if 0<=nx<GRID_SIZE and 0<=ny<GRID_SIZE:
+
                             if grid[nx,ny]==fire:
+
                                 prob=spread
+
                                 if abs(dx)+abs(dy)==2:
                                     prob*=0.7
+
+                                # -------- ВЛИЯНИЕ ВОДЫ --------
+                                water_count=0
+
+                                for wx in [-1,0,1]:
+                                    for wy in [-1,0,1]:
+
+                                        if wx==0 and wy==0:
+                                            continue
+
+                                        cx=x+wx
+                                        cy=y+wy
+
+                                        if 0<=cx<GRID_SIZE and 0<=cy<GRID_SIZE:
+                                            if grid[cx,cy]==water:
+                                                water_count+=1
+
+                                if water_count>0:
+                                    prob *= (0.6 ** water_count)
+                                # --------------------------------
+
                                 dir_x = x - nx
                                 dir_y = y - ny
+
                                 if wind != (0,0):
+
                                     wind_len = (wind[0]**2 + wind[1]**2)**0.5
                                     wind_x = wind[0]/wind_len
                                     wind_y = wind[1]/wind_len
+
                                     dir_len = (dir_x**2 + dir_y**2)**0.5
                                     dir_x /= dir_len
                                     dir_y /= dir_len
+
                                     dot = wind_x*dir_x + wind_y*dir_y
+
                                     prob += dot*wind_strength
+
                                 prob *= 1 - humidity
+
                                 if random.random()<prob:
                                     catch=True
                                     break
-                    if catch: break
+
+                    if catch:
+                        break
+
                 if catch:
                     new_grid[x,y]=fire
                     new_burn[x,y]=1
+
     grid=new_grid
     burn_time=new_burn
 
@@ -192,31 +237,42 @@ def draw_gui():
     for s in sliders: s.draw()
     for b in buttons: b.draw()
 
-    
 running=True
 while running:
+
     clock.tick(int(fps))
     screen.fill((10,12,18))
 
     for event in pygame.event.get():
-        if event.type==pygame.QUIT: running=False
-        for s in sliders: s.update(event)
-        if pause_btn.click(event): paused=not paused
+
+        if event.type==pygame.QUIT:
+            running=False
+
+        for s in sliders:
+            s.update(event)
+
+        if pause_btn.click(event):
+            paused=not paused
+
         if reset_btn.click(event):
             grid=np.random.choice([empty,wood],(GRID_SIZE,GRID_SIZE),p=[0.4,0.6])
+
         if clear_btn.click(event):
             grid=np.zeros((GRID_SIZE,GRID_SIZE))
+
         if ignite_btn.click(event):
             trees = np.argwhere(grid==wood)
             if len(trees)>0:
                 x,y = random.choice(trees)
                 grid[x,y]=fire
                 burn_time[x,y]=1
+
         if water_btn.click(event):
             empties = np.argwhere(grid==empty)
             if len(empties)>0:
                 x,y = random.choice(empties)
                 grid[x,y]=water
+
         if wind_l.click(event): wind=(-1,0)
         if wind_r.click(event): wind=(1,0)
         if wind_u.click(event): wind=(0,-1)
@@ -229,9 +285,12 @@ while running:
     lightning=sliders[3].val
     fps=sliders[4].val
 
-    if not paused: update_sim()
+    if not paused:
+        update_sim()
+
     draw_world()
     draw_gui()
+
     pygame.display.flip()
 
 pygame.quit()
