@@ -168,7 +168,7 @@ def update_sim():
                                 if abs(dx)+abs(dy)==2:
                                     prob*=0.7
 
-                                # -------- ВЛИЯНИЕ ВОДЫ --------
+                                
                                 water_count=0
 
                                 for wx in [-1,0,1]:
@@ -186,7 +186,7 @@ def update_sim():
 
                                 if water_count>0:
                                     prob *= (0.6 ** water_count)
-                                # --------------------------------
+                             
 
                                 dir_x = x - nx
                                 dir_y = y - ny
@@ -294,3 +294,4 @@ while running:
     pygame.display.flip()
 
 pygame.quit()
+
