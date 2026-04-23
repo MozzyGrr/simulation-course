@@ -66,7 +66,7 @@ class SimulatorUI:
         main = ttk.Frame(self.root, padding=10)
         main.pack(fill="both", expand=True)
 
-        # Разделение на левую и правую часть
+        
         left = ttk.Frame(main)
         left.pack(side="left", fill="y", padx=10)
 
@@ -96,7 +96,7 @@ class SimulatorUI:
         ttk.Button(parent, text="Запустить нормальную", command=self.run_normal).pack(pady=5)
 
     def build_output(self, parent):
-        # Таблица
+        
         cols = ("N", "Mean", "Var", "ErrMean", "ErrVar", "Chi2", "p")
         self.table = ttk.Treeview(parent, columns=cols, show="headings", height=8)
 
@@ -106,7 +106,7 @@ class SimulatorUI:
 
         self.table.pack(fill="x", pady=10)
 
-        # График
+
         self.fig = Figure(figsize=(7, 6))
         self.axes = [self.fig.add_subplot(2, 2, i + 1) for i in range(4)]
 
