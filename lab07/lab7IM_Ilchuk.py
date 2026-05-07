@@ -57,7 +57,7 @@ def simulate_ctmc(Q: np.ndarray, T_days: float, state0: int = 0):
             break
         probs = Q[cur, :].copy()
         probs[cur] = 0
-        probs = probs / probs.sum()
+        probs = probs / probs.sum()# Переделываем скорости в вероятности
         nxt = np.random.choice(3, p=probs)
         times.append(t)
         states.append(nxt)
@@ -96,7 +96,7 @@ class WeatherApp(tk.Tk):
         left = tk.Frame(self, bg="#181825", padx=12, pady=12)
         left.pack(side=tk.LEFT, fill=tk.Y)
 
-        tk.Label(left, text="⚙️  Параметры", font=("Segoe UI", 13, "bold"),
+        tk.Label(left, text=" Параметры", font=("Segoe UI", 13, "bold"),
                  bg="#181825", fg="#cdd6f4").pack(anchor="w", pady=(0, 8))
         
         tk.Label(left, text="Матрица интенсивностей λᵢⱼ",
@@ -133,14 +133,12 @@ class WeatherApp(tk.Tk):
 
         sep(left)
 
-        # Длительность
         tk.Label(left, text="Длительность моделирования (дней):",
                  bg="#181825", fg="#89b4fa", font=("Segoe UI", 9)).pack(anchor="w")
         self._var_T = tk.StringVar(value="365")
         tk.Entry(left, textvariable=self._var_T, bg="#313244", fg="#cdd6f4",
                  insertbackground="white", font=("Consolas", 10), relief="flat").pack(fill=tk.X, pady=2)
 
-        # Начальное состояние
         tk.Label(left, text="Начальное состояние:",
                  bg="#181825", fg="#89b4fa", font=("Segoe UI", 9)).pack(anchor="w", pady=(6, 0))
         self._var_s0 = tk.IntVar(value=1)
@@ -151,26 +149,24 @@ class WeatherApp(tk.Tk):
 
         sep(left)
 
-        # Кнопки
         btn_kw = dict(font=("Segoe UI", 10, "bold"), relief="flat", pady=5, cursor="hand2")
-        tk.Button(left, text="▶  Запустить симуляцию", bg="#89b4fa", fg="#1e1e2e",
+        tk.Button(left, text=" Запустить симуляцию", bg="#89b4fa", fg="#1e1e2e",
                   command=self._run_simulation, **btn_kw).pack(fill=tk.X, pady=2)
-        tk.Button(left, text="💾  Сохранить в CSV", bg="#a6e3a1", fg="#1e1e2e",
+        tk.Button(left, text=" Сохранить в CSV", bg="#a6e3a1", fg="#1e1e2e",
                   command=self._save_csv, **btn_kw).pack(fill=tk.X, pady=2)
-        tk.Button(left, text="🗑  Очистить", bg="#f38ba8", fg="#1e1e2e",
+        tk.Button(left, text=" Очистить", bg="#f38ba8", fg="#1e1e2e",
                   command=self._clear, **btn_kw).pack(fill=tk.X, pady=2)
 
         sep(left)
 
-        # Результаты — текст
-        tk.Label(left, text="📊  Результаты", font=("Segoe UI", 11, "bold"),
+        tk.Label(left, text=" Результаты", font=("Segoe UI", 11, "bold"),
                  bg="#181825", fg="#cdd6f4").pack(anchor="w")
         self._result_text = tk.Text(left, width=30, height=14, bg="#11111b", fg="#cdd6f4",
                                     font=("Consolas", 9), relief="flat", state="disabled",
                                     wrap="word")
         self._result_text.pack(fill=tk.BOTH, expand=True, pady=4)
 
-        # ── Правая панель: графики ──
+      
         right = tk.Frame(self, bg="#1e1e2e")
         right.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=6, pady=6)
 
@@ -180,7 +176,6 @@ class WeatherApp(tk.Tk):
 
         self._draw_placeholder()
 
-    # ── вспомогательные ───────────────────────────────────────
 
     def _get_Q(self):
         off = np.zeros((3, 3))
@@ -203,7 +198,7 @@ class WeatherApp(tk.Tk):
         self._result_text.insert(tk.END, text)
         self._result_text.config(state="disabled")
 
-    # ── симуляция ─────────────────────────────────────────────
+
 
     def _run_simulation(self):
         if self._sim_running:
@@ -214,13 +209,13 @@ class WeatherApp(tk.Tk):
             T = float(self._var_T.get())
             if T <= 0:
                 raise ValueError("T должно быть > 0")
-            s0 = self._var_s0.get() - 1   # 0-based
+            s0 = self._var_s0.get() - 1  
         except ValueError as e:
             messagebox.showerror("Ошибка ввода", str(e))
             return
 
         self._sim_running = True
-        self._set_result("⏳ Выполняется симуляция...")
+        self._set_result(" Выполняется симуляция...")
 
         def worker():
             times, states = simulate_ctmc(Q, T, s0)
@@ -238,7 +233,7 @@ class WeatherApp(tk.Tk):
         theory = stationary_distribution(Q)
         n_transitions = len(times) - 2
 
-        # Текстовые результаты
+
         lines = ["=" * 28, "  СТАТИСТИКА СИМУЛЯЦИИ", "=" * 28,
                  f"Период: {T:.0f} дней",
                  f"Переходов: {n_transitions}",
@@ -257,13 +252,13 @@ class WeatherApp(tk.Tk):
 
         self._draw_charts(Q, times, states, emp, theory, T)
 
-    # ── графики ───────────────────────────────────────────────
+
 
     def _draw_placeholder(self):
         self._fig.clear()
         ax = self._fig.add_subplot(111)
         ax.set_facecolor("#1e1e2e")
-        ax.text(0.5, 0.5, "Задайте параметры и нажмите\n▶ Запустить симуляцию",
+        ax.text(0.5, 0.5, "Задайте параметры и нажмите\n Запустить симуляцию",
                 ha="center", va="center", fontsize=14, color="#585b70",
                 transform=ax.transAxes)
         ax.axis("off")
@@ -276,9 +271,9 @@ class WeatherApp(tk.Tk):
         gs = self._fig.add_gridspec(2, 2, hspace=0.45, wspace=0.35,
                                     left=0.08, right=0.97, top=0.93, bottom=0.08)
 
-        ax1 = self._fig.add_subplot(gs[0, :])   # временной ряд
-        ax2 = self._fig.add_subplot(gs[1, 0])   # гистограмма сравнения
-        ax3 = self._fig.add_subplot(gs[1, 1])   # pie-диаграмма
+        ax1 = self._fig.add_subplot(gs[0, :])  
+        ax2 = self._fig.add_subplot(gs[1, 0])  
+        ax3 = self._fig.add_subplot(gs[1, 1])   
 
         dark, fg = "#1e1e2e", "#cdd6f4"
         for ax in (ax1, ax2, ax3):
@@ -290,8 +285,6 @@ class WeatherApp(tk.Tk):
             ax.yaxis.label.set_color(fg)
             ax.title.set_color(fg)
 
-        # ── 1. Временной ряд состояний ────────────────────────
-        # Покажем не более N_SHOW событий, чтобы график не «сплющился»
         N_SHOW = 2000
         if len(times) > N_SHOW + 1:
             idx = np.linspace(0, len(times) - 2, N_SHOW, dtype=int)
@@ -309,10 +302,8 @@ class WeatherApp(tk.Tk):
         ax1.set_yticklabels(["Ясно", "Облачно", "Пасмурно"], fontsize=8, color=fg)
         ax1.set_xlabel("Время (дни)", color=fg, fontsize=9)
         ax1.set_title("Траектория погоды во времени", fontsize=10)
-        # Сетка
         ax1.yaxis.grid(True, color="#313244", linestyle="--", linewidth=0.5)
 
-        # ── 2. Гистограмма: эмпирическое vs теоретическое ────
         labels = ["Ясно", "Облачно", "Пасмурно"]
         x = np.arange(3)
         w = 0.35
@@ -327,13 +318,10 @@ class WeatherApp(tk.Tk):
         ax2.set_title("Сравнение распределений", fontsize=10)
         ax2.legend(fontsize=7, facecolor="#313244", labelcolor=fg, edgecolor="#585b70")
         ax2.set_ylim(0, max(max(emp), max(theory)) * 1.25)
-        # Подписи над столбцами
         for b in list(bars_e) + list(bars_t):
             h = b.get_height()
             ax2.text(b.get_x() + b.get_width()/2, h + 0.005,
                      f"{h:.3f}", ha="center", va="bottom", fontsize=7, color=fg)
-
-        # ── 3. Круговая диаграмма (эмпирическое) ─────────────
         wedge_props = {"linewidth": 1.5, "edgecolor": "#1e1e2e"}
         ax3.pie(emp, labels=labels, colors=STATE_COLORS_HEX,
                 autopct="%1.1f%%", pctdistance=0.75,
