@@ -13,7 +13,7 @@ from PyQt6.QtWidgets import (
     QLabel, QPushButton, QDoubleSpinBox, QSpinBox, QGroupBox,
     QFrame, QSizePolicy, QProgressBar, QScrollArea
 )
-from PyQt6.QtCore import Qt, QTimer
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
 
 
 C_BG       = "#F7F3EE"      
@@ -113,6 +113,7 @@ class FlowSimulator:
     @staticmethod
     def poisson_pmf(k, lam_T):
         return (math.exp(-lam_T) * (lam_T ** k)) / math.factorial(k)
+
     @staticmethod
     def one_run(lam: float, T: float) -> int:
         t, count = 0.0, 0
@@ -133,11 +134,33 @@ class FlowSimulator:
                 progress_cb(int((i + 1) / N * 100))
         return data
 
+
+class SimWorker(QThread):
+    progress = pyqtSignal(int)
+    finished = pyqtSignal(object, float, float)
+
+    def __init__(self, lam: float, T: float, N: int):
+        super().__init__()
+        self.lam = lam
+        self.T   = T
+        self.N   = N
+
+    def run(self):
+        data = FlowSimulator.simulate(
+            self.lam, self.T, self.N,
+            progress_cb=lambda v: self.progress.emit(v)
+        )
+        self.finished.emit(data, self.lam, self.T)
+
+
 class ChartCanvas(FigureCanvas):
     def __init__(self):
         self.fig = Figure(figsize=(6, 4.5), dpi=110, facecolor=C_PANEL)
         super().__init__(self.fig)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding
+        )
         self._draw_placeholder()
 
     def _draw_placeholder(self):
@@ -188,6 +211,7 @@ class ChartCanvas(FigureCanvas):
         self.fig.tight_layout()
         self.draw()
 
+
 class StatCard(QFrame):
     def __init__(self, title: str, value: str = "—", accent: str = C_ACCENT):
         super().__init__()
@@ -222,11 +246,13 @@ class MainWindow(QMainWindow):
         root_lay.setContentsMargins(0, 0, 0, 0)
         root_lay.setSpacing(0)
         root_lay.addWidget(self._make_header())
+
         body = QWidget()
         body_lay = QHBoxLayout(body)
         body_lay.setContentsMargins(20, 15, 20, 15)
         body_lay.setSpacing(20)
         root_lay.addWidget(body)
+
         left_scroll = QScrollArea()
         left_scroll.setFixedWidth(310)
         left_scroll.setWidgetResizable(True)
@@ -237,18 +263,18 @@ class MainWindow(QMainWindow):
         self._build_left_panel()
         left_scroll.setWidget(left_container)
         body_lay.addWidget(left_scroll, stretch=0)
+
         right_container = QWidget()
         right_lay = QVBoxLayout(right_container)
         right_lay.setContentsMargins(0, 0, 0, 0)
         right_lay.setSpacing(12)
-        
+
         lbl = QLabel("Распределение числа заявок за интервал T")
         lbl.setStyleSheet(f"font-size: 12px; color: {C_MUTED}; font-weight: bold;")
         right_lay.addWidget(lbl)
 
         self.chart = ChartCanvas()
         right_lay.addWidget(self.chart, stretch=1)
-
         body_lay.addWidget(right_container, stretch=1)
 
     def _make_header(self):
@@ -267,17 +293,22 @@ class MainWindow(QMainWindow):
         grp1 = QGroupBox("Параметры потока")
         g1_lay = QVBoxLayout(grp1)
         self.lam_spin = self._add_spin(g1_lay, "λ — интенсивность (зап/с)", 0.1, 50.0, 3.0, 0.5)
-        self.T_spin = self._add_spin(g1_lay, "T — интервал наблюдения (с)", 0.1, 60.0, 5.0, 0.5)
-        
+        self.T_spin   = self._add_spin(g1_lay, "T — интервал наблюдения (с)", 0.1, 60.0, 5.0, 0.5)
+
         self.lT_label = QLabel()
         self.lT_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.lT_label.setStyleSheet(f"background: {C_BG}; border: 1px solid {C_BORDER}; border-radius: 6px; padding: 6px; font-family: 'Courier New'; color: {C_ACCENT}; font-weight: bold;")
+        self.lT_label.setStyleSheet(
+            f"background: {C_BG}; border: 1px solid {C_BORDER}; border-radius: 6px; "
+            f"padding: 6px; font-family: 'Courier New'; color: {C_ACCENT}; font-weight: bold;"
+        )
         g1_lay.addWidget(self.lT_label)
         self.left_lay.addWidget(grp1)
+
         grp2 = QGroupBox("Эксперимент")
         g2_lay = QVBoxLayout(grp2)
         self.N_spin = self._add_spin_int(g2_lay, "N — число тестов", 100, 200000, 10000, 1000)
         self.left_lay.addWidget(grp2)
+
         self.progress = QProgressBar()
         self.progress.setVisible(False)
         self.progress.setFixedHeight(6)
@@ -290,12 +321,12 @@ class MainWindow(QMainWindow):
         self.left_lay.addWidget(self.run_btn)
 
         self.left_lay.addWidget(self._make_divider("Результаты"))
-        self.card_mean = StatCard("Среднее x̄", accent=C_ACCENT)
-        self.card_var = StatCard("Дисперсия D", accent=C_ACCENT2)
-        self.card_ratio = StatCard("Отношение D / x̄ (→1)", accent=C_SUCCESS)
-        self.card_lT = StatCard("λ·T (Теория)", accent=C_WARN)
 
-        for c in (self.card_mean, self.card_var, self.card_ratio, self.card_lT):
+        self.card_mean = StatCard("Среднее x̄", accent=C_ACCENT)
+        self.card_var  = StatCard("Дисперсия D", accent=C_ACCENT2)
+        self.card_lT   = StatCard("λ·T (Теория)", accent=C_WARN)
+
+        for c in (self.card_mean, self.card_var, self.card_lT):
             self.left_lay.addWidget(c)
 
         self.left_lay.addStretch()
@@ -309,8 +340,11 @@ class MainWindow(QMainWindow):
         lbl.setStyleSheet(f"font-size: 11px; color: {C_MUTED};")
         lay.addWidget(lbl)
         spin = QDoubleSpinBox()
-        spin.setRange(lo, hi); spin.setValue(val); spin.setSingleStep(step); spin.setDecimals(1)
-        spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)  # Убирает стрелочки
+        spin.setRange(lo, hi)
+        spin.setValue(val)
+        spin.setSingleStep(step)
+        spin.setDecimals(1)
+        spin.setButtonSymbols(QDoubleSpinBox.ButtonSymbols.NoButtons)
         lay.addWidget(spin)
         return spin
 
@@ -319,14 +353,19 @@ class MainWindow(QMainWindow):
         lbl.setStyleSheet(f"font-size: 11px; color: {C_MUTED};")
         lay.addWidget(lbl)
         spin = QSpinBox()
-        spin.setRange(lo, hi); spin.setValue(val); spin.setSingleStep(step)
-        spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)  # Убирает стрелочки
+        spin.setRange(lo, hi)
+        spin.setValue(val)
+        spin.setSingleStep(step)
+        spin.setButtonSymbols(QSpinBox.ButtonSymbols.NoButtons)
         lay.addWidget(spin)
         return spin
 
     def _make_divider(self, text):
         lbl = QLabel(text.upper())
-        lbl.setStyleSheet(f"color: {C_MUTED}; font-size: 10px; letter-spacing: 2px; border-bottom: 1px solid {C_BORDER}; padding-bottom: 2px; font-weight: bold;")
+        lbl.setStyleSheet(
+            f"color: {C_MUTED}; font-size: 10px; letter-spacing: 2px; "
+            f"border-bottom: 1px solid {C_BORDER}; padding-bottom: 2px; font-weight: bold;"
+        )
         return lbl
 
     def _update_lT(self):
@@ -339,30 +378,31 @@ class MainWindow(QMainWindow):
         self.progress.setValue(0)
 
         lam = self.lam_spin.value()
-        T = self.T_spin.value()
-        N = self.N_spin.value()
+        T   = self.T_spin.value()
+        N   = self.N_spin.value()
 
-        def do_work():
-            data = FlowSimulator.simulate(lam, T, N, progress_cb=lambda v: self.progress.setValue(v))
-            self._show_results(data, lam, T)
-            self.run_btn.setEnabled(True)
-            self.run_btn.setText("▶  ЗАПУСТИТЬ СИМУЛЯЦИЮ")
-            self.progress.setVisible(False)
+        self._worker = SimWorker(lam, T, N)
+        self._worker.progress.connect(self.progress.setValue)
+        self._worker.finished.connect(self._on_finished)
+        self._worker.start()
 
-        QTimer.singleShot(50, do_work)
+    def _on_finished(self, data, lam, T):
+        self._show_results(data, lam, T)
+        self.run_btn.setEnabled(True)
+        self.run_btn.setText("▶  ЗАПУСТИТЬ СИМУЛЯЦИЮ")
+        self.progress.setVisible(False)
 
     def _show_results(self, data: np.ndarray, lam: float, T: float):
-        lT = lam * T
+        lT   = lam * T
         mean = float(np.mean(data))
-        var = float(np.var(data, ddof=0))
-        ratio = var / mean if mean > 1e-9 else float("nan")
+        var  = float(np.var(data, ddof=0))
 
         self.card_mean.set_value(f"{mean:.4f}")
         self.card_var.set_value(f"{var:.4f}")
-        self.card_ratio.set_value(f"{ratio:.4f}")
         self.card_lT.set_value(f"{lT:.4f}")
 
         self.chart.plot(data, lam, T)
+
 
 def main():
     app = QApplication(sys.argv)
@@ -370,6 +410,7 @@ def main():
     w = MainWindow()
     w.show()
     sys.exit(app.exec())
+
 
 if __name__ == "__main__":
     main()
